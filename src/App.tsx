@@ -20,6 +20,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { FONTS } from "./constants/font";
 
 type TitlePosition = "TL" | "TC" | "TR" | "BL" | "BC" | "BR";
 
@@ -38,37 +39,6 @@ export default function App() {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
-
-  const FONTS = [
-    { name: "Noto Sans KR", value: "'Noto Sans KR', sans-serif" },
-    { name: "나눔고딕", value: "'Nanum Gothic', sans-serif" },
-    { name: "나눔명조", value: "'Nanum Myeongjo', serif" },
-    { name: "고운바탕", value: "'Gowun Batang', serif" },
-    { name: "고운돋움", value: "'Gowun Dodum', sans-serif" },
-    { name: "시스템 기본", value: "system-ui, -apple-system, sans-serif" },
-  ];
-
-  const handleDuplicateSlide = (index: number) => {
-    if (!lyrics.trim()) return;
-
-    if (splitMode === "block") {
-      const blocks = lyrics.split(/\n\s*\n/).filter((b) => b.trim() !== "");
-      if (index < blocks.length) {
-        const newBlocks = [...blocks];
-        newBlocks.splice(index + 1, 0, blocks[index]);
-        setLyrics(newBlocks.join("\n\n"));
-        setCurrentSlideIndex(index + 1);
-      }
-    } else {
-      const lines = lyrics.split("\n").filter((line) => line.trim() !== "");
-      const start = index * linesPerSlide;
-      const slideLines = lines.slice(start, start + linesPerSlide);
-      const newLines = [...lines];
-      newLines.splice(start + linesPerSlide, 0, ...slideLines);
-      setLyrics(newLines.join("\n"));
-      setCurrentSlideIndex(index + 1);
-    }
-  };
 
   const slides = useMemo(() => {
     if (!lyrics.trim()) return [];
@@ -117,7 +87,6 @@ export default function App() {
       const slide = pres.addSlide();
       slide.background = { color: bgColor.replace("#", "") };
 
-      // Add Title if enabled
       if (showTitle && titleText) {
         let x: string | number = 0.5;
         let y: string | number = 0.3;
@@ -168,7 +137,6 @@ export default function App() {
         });
       }
 
-      // Add Lyrics
       const content = slideLines.join("\n");
       slide.addText(content, {
         x: 0,
@@ -180,7 +148,7 @@ export default function App() {
         align: "center",
         valign: "middle",
         fontFace: fontFamily,
-        lineSpacing: Math.round(fontSize * 1.25), // Set line spacing to 1.25x font size as requested
+        lineSpacing: Math.round(fontSize * 1.25),
       });
     });
 
@@ -217,7 +185,6 @@ export default function App() {
 
   return (
     <div className="h-screen bg-slate-50 flex flex-col md:flex-row font-sans text-slate-900 overflow-hidden">
-      {/* Left Column: Lyrics Input */}
       <div className="w-full md:w-[485px] flex flex-col bg-white border-r border-slate-200 shadow-sm z-20">
         <header className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div className="flex items-center gap-4">
@@ -277,9 +244,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* Right Column: Preview (Top) & Settings (Bottom) */}
       <div className="flex-1 flex flex-col min-h-0 bg-slate-100">
-        {/* Preview Area (Top) */}
         <div className="flex-[2] flex flex-col p-4 md:p-6 border-b border-slate-200 min-h-0 overflow-hidden">
           <div className="max-w-4xl mx-auto w-full flex flex-col h-full overflow-hidden">
             <div className="flex items-center justify-between mb-4 shrink-0">
@@ -333,7 +298,6 @@ export default function App() {
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <div className="relative w-full h-full flex items-center justify-center">
-                    {/* 16:9 Aspect Ratio Container that fits within parent */}
                     <div
                       className="relative w-full max-w-full max-h-full shadow-2xl overflow-hidden rounded-xl border border-slate-300"
                       style={{
@@ -399,7 +363,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Settings Area (Bottom) */}
         <div
           className={`bg-white transition-all duration-300 ease-in-out shadow-[0_-4px_30px_rgba(0,0,0,0.05)] flex flex-col ${isSettingsOpen ? "flex-[2] min-h-[300px]" : "h-14"}`}
         >
@@ -573,7 +536,6 @@ export default function App() {
                 </section>
               </div>
 
-              {/* Right Settings Column */}
               <div className="space-y-8">
                 <section className="space-y-6">
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-500 uppercase tracking-widest">
@@ -664,7 +626,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Clear Confirmation Modal */}
       <AnimatePresence>
         {showClearConfirm && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
