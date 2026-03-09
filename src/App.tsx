@@ -21,8 +21,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { FONTS } from "./constants/font";
-
-type TitlePosition = "TL" | "TC" | "TR" | "BL" | "BC" | "BR";
+import { TitlePosition } from "./types/title";
+import PositionButton from "./components/PositionButton";
 
 export default function App() {
   const [lyrics, setLyrics] = useState("");
@@ -154,34 +154,6 @@ export default function App() {
 
     pres.writeFile({ fileName: `${titleText || "lyrics"}.pptx` });
   };
-
-  const PositionButton = ({
-    pos,
-    label,
-  }: {
-    pos: TitlePosition;
-    label: string;
-  }) => (
-    <button
-      onClick={() => setTitlePosition(pos)}
-      className={`h-10 border rounded-md flex items-center justify-center transition-all ${
-        titlePosition === pos
-          ? "bg-indigo-600 border-indigo-600 text-white shadow-md scale-105"
-          : "bg-white border-slate-200 text-slate-600 hover:border-indigo-300"
-      }`}
-      title={label}
-    >
-      <div
-        className={`w-1.5 h-1.5 rounded-full bg-current ${
-          pos.includes("L")
-            ? "mr-auto ml-1.5"
-            : pos.includes("R")
-              ? "ml-auto mr-1.5"
-              : "mx-auto"
-        } ${pos.includes("T") ? "mb-auto mt-1.5" : "mt-auto mb-1.5"}`}
-      />
-    </button>
-  );
 
   return (
     <div className="h-screen bg-slate-50 flex flex-col md:flex-row font-sans text-slate-900 overflow-hidden">
@@ -500,12 +472,42 @@ export default function App() {
                         className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
                       />
                       <div className="grid grid-cols-3 gap-2">
-                        <PositionButton pos="TL" label="왼쪽 위" />
-                        <PositionButton pos="TC" label="가운데 위" />
-                        <PositionButton pos="TR" label="오른쪽 위" />
-                        <PositionButton pos="BL" label="왼쪽 아래" />
-                        <PositionButton pos="BC" label="가운데 아래" />
-                        <PositionButton pos="BR" label="오른쪽 아래" />
+                        <PositionButton
+                          pos="TL"
+                          label="왼쪽 위"
+                          titlePosition={titlePosition}
+                          onClick={() => setTitlePosition("TL")}
+                        />
+                        <PositionButton
+                          pos="TC"
+                          label="가운데 위"
+                          titlePosition={titlePosition}
+                          onClick={() => setTitlePosition("TC")}
+                        />
+                        <PositionButton
+                          pos="TR"
+                          label="오른쪽 위"
+                          titlePosition={titlePosition}
+                          onClick={() => setTitlePosition("TR")}
+                        />
+                        <PositionButton
+                          pos="BL"
+                          label="왼쪽 아래"
+                          titlePosition={titlePosition}
+                          onClick={() => setTitlePosition("BL")}
+                        />
+                        <PositionButton
+                          pos="BC"
+                          label="가운데 아래"
+                          titlePosition={titlePosition}
+                          onClick={() => setTitlePosition("BC")}
+                        />
+                        <PositionButton
+                          pos="BR"
+                          label="오른쪽 아래"
+                          titlePosition={titlePosition}
+                          onClick={() => setTitlePosition("BR")}
+                        />
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm font-bold text-slate-500">
