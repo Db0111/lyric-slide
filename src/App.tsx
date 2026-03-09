@@ -250,9 +250,6 @@ export default function App() {
               </PreviewTitle>
               {slides.length > 0 && (
                 <PreviewControls>
-                  <SlideCounter>
-                    {currentSlideIndex + 1} / {slides.length}
-                  </SlideCounter>
                   <ArrowGroup>
                     <IconButton
                       onClick={() =>
@@ -322,6 +319,20 @@ export default function App() {
                 </SlideOuter>
               )}
             </PreviewViewport>
+            {slides.length > 0 && (
+              <PreviewFooter>
+                <DotIndicators>
+                  {slides.map((_, index) => (
+                    <SlideDot
+                      key={`slide-dot-${index}`}
+                      onClick={() => setCurrentSlideIndex(index)}
+                      $active={currentSlideIndex === index}
+                      aria-label={`${index + 1}번 슬라이드로 이동`}
+                    />
+                  ))}
+                </DotIndicators>
+              </PreviewFooter>
+            )}
           </PreviewInner>
         </PreviewSection>
 
@@ -394,19 +405,23 @@ export default function App() {
                   </ColorGrid>
 
                   <FieldGroup>
-                    <FieldTitle>폰트 설정</FieldTitle>
-                    <FontGrid>
+                    <FieldTitleWithIcon>
+                      <Type size={14} /> 폰트 설정
+                    </FieldTitleWithIcon>
+                    <FontSelect
+                      value={fontFamily}
+                      onChange={(e) => setFontFamily(e.target.value)}
+                    >
                       {FONTS.map((font) => (
-                        <FontButton
+                        <option
                           key={font.name}
-                          onClick={() => setFontFamily(font.name)}
-                          $active={fontFamily === font.name}
+                          value={font.name}
                           style={{ fontFamily: font.value }}
                         >
                           {font.name}
-                        </FontButton>
+                        </option>
                       ))}
-                    </FontGrid>
+                    </FontSelect>
                   </FieldGroup>
                 </section>
 
@@ -869,12 +884,6 @@ const PreviewControls = styled.div`
   gap: 16px;
 `;
 
-const SlideCounter = styled.span`
-  font-size: 14px;
-  font-weight: 700;
-  color: #64748b;
-`;
-
 const ArrowGroup = styled.div`
   display: flex;
   gap: 8px;
@@ -915,6 +924,36 @@ const PreviewViewport = styled.div`
 
   @media (min-width: 768px) {
     padding: 32px;
+  }
+`;
+
+const PreviewFooter = styled.div`
+  margin-top: 12px;
+  min-height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+`;
+
+const DotIndicators = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const SlideDot = styled.button<{ $active: boolean }>`
+  width: ${({ $active }) => ($active ? "10px" : "8px")};
+  height: ${({ $active }) => ($active ? "10px" : "8px")};
+  border-radius: 9999px;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  background: ${({ $active }) => ($active ? "#7c3aed" : "#cbd5e1")};
+  transition: all 0.18s ease;
+
+  &:hover {
+    background: ${({ $active }) => ($active ? "#6d28d9" : "#94a3b8")};
   }
 `;
 
@@ -1123,6 +1162,13 @@ const FieldTitle = styled.span`
   font-weight: 700;
 `;
 
+const FieldTitleWithIcon = styled(FieldTitle)`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.18em;
+`;
+
 const ColorInputWrap = styled.div`
   display: flex;
   align-items: center;
@@ -1158,27 +1204,22 @@ const FieldGroup = styled.div`
   gap: 8px;
 `;
 
-const FontGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-`;
-
-const FontButton = styled.button<{ $active: boolean }>`
-  padding: 8px 12px;
+const FontSelect = styled.select`
+  width: 100%;
+  padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid;
-  border-color: ${({ $active }) => ($active ? "#c7d2fe" : "#f1f5f9")};
-  background: ${({ $active }) => ($active ? "#eef2ff" : "#ffffff")};
-  color: ${({ $active }) => ($active ? "#4f46e5" : "#64748b")};
-  font-size: 12px;
-  font-weight: ${({ $active }) => ($active ? 700 : 500)};
-  text-align: left;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
+  outline: none;
   transition: all 0.2s ease;
 
-  &:hover {
-    border-color: #cbd5e1;
+  &:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px #818cf8;
   }
 `;
 
