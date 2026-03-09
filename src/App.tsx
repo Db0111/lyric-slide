@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useMemo, useEffect } from "react";
+import styled from "@emotion/styled";
 import pptxgen from "pptxgenjs";
 import {
   Download,
@@ -18,11 +19,46 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
+  Music,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { FONTS } from "./constants/font";
 import { TitlePosition } from "./types/title";
 import PositionButton from "./components/PositionButton";
+
+const getTitleOverlayStyle = (
+  position: TitlePosition,
+  color: string,
+  fontSize: number,
+  fontFamily: string,
+): React.CSSProperties => {
+  const style: React.CSSProperties = {
+    position: "absolute",
+    padding: "24px",
+    width: "33.333%",
+    zIndex: 10,
+    color,
+    fontSize: `${fontSize * 0.8}px`,
+    fontWeight: 700,
+    fontFamily,
+  };
+
+  style[position.includes("T") ? "top" : "bottom"] = 0;
+
+  if (position.includes("L")) {
+    style.left = 0;
+    style.textAlign = "left";
+  } else if (position.includes("R")) {
+    style.right = 0;
+    style.textAlign = "right";
+  } else {
+    style.left = "50%";
+    style.transform = "translateX(-50%)";
+    style.textAlign = "center";
+  }
+
+  return style;
+};
 
 export default function App() {
   const [lyrics, setLyrics] = useState("");
@@ -39,24 +75,27 @@ export default function App() {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
+  const [logoError, setLogoError] = useState(false);
+
+  const selectedFont =
+    FONTS.find((font) => font.name === fontFamily)?.value || fontFamily;
 
   const slides = useMemo(() => {
     if (!lyrics.trim()) return [];
 
     if (splitMode === "block") {
-      // Split by one or more empty lines
       const blocks = lyrics.split(/\n\s*\n/);
       return blocks
         .map((block) => block.split("\n").filter((line) => line.trim() !== ""))
         .filter((lines) => lines.length > 0);
-    } else {
-      const lines = lyrics.split("\n").filter((line) => line.trim() !== "");
-      const result = [];
-      for (let i = 0; i < lines.length; i += linesPerSlide) {
-        result.push(lines.slice(i, i + linesPerSlide));
-      }
-      return result;
     }
+
+    const lines = lyrics.split("\n").filter((line) => line.trim() !== "");
+    const result = [];
+    for (let i = 0; i < lines.length; i += linesPerSlide) {
+      result.push(lines.slice(i, i + linesPerSlide));
+    }
+    return result;
   }, [lyrics, splitMode, linesPerSlide]);
 
   useEffect(() => {
@@ -75,6 +114,7 @@ export default function App() {
         setCurrentSlideIndex((prev) => Math.min(slides.length - 1, prev + 1));
       }
     };
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [slides.length]);
@@ -126,24 +166,23 @@ export default function App() {
         }
 
         slide.addText(titleText, {
-          x: x as any,
-          y: y as any,
+          x: x as never,
+          y: y as never,
           w: "30%",
           fontSize: titleFontSize,
           color: textColor.replace("#", ""),
-          align: align,
+          align,
           bold: true,
           fontFace: fontFamily,
         });
       }
 
-      const content = slideLines.join("\n");
-      slide.addText(content, {
+      slide.addText(slideLines.join("\n"), {
         x: 0,
         y: 0,
         w: "100%",
         h: "100%",
-        fontSize: fontSize,
+        fontSize,
         color: textColor.replace("#", ""),
         align: "center",
         valign: "middle",
@@ -156,528 +195,1242 @@ export default function App() {
   };
 
   return (
-    <div className="h-screen bg-slate-50 flex flex-col md:flex-row font-sans text-slate-900 overflow-hidden">
-      <div className="w-full md:w-[485px] flex flex-col bg-white border-r border-slate-200 shadow-sm z-20">
-        <header className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 flex items-center justify-center overflow-hidden rounded-xl">
-              <img
-                src="/lyricslide_logo.png"
-                alt="LyricSlide Logo"
-                className="w-full h-full object-contain scale-125"
-                referrerPolicy="no-referrer"
-                onError={(e) => {
-                  e.currentTarget.src =
-                    "https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/music.svg";
-                  e.currentTarget.className =
-                    "w-8 h-8 text-indigo-600 opacity-50";
-                }}
-              />
-            </div>
-            <div className="flex flex-col">
-              <h1 className="text-2xl font-medium tracking-tight leading-none text-slate-800">
-                LyricSlide
-              </h1>
-              <span className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-1">
-                가사를 PPT 슬라이드로
-              </span>
-            </div>
-          </div>
+    <AppShell>
+      <Sidebar>
+        <Header>
+          <BrandRow>
+            <LogoWrap>
+              {!logoError ? (
+                <LogoImage
+                  src="/lyricslide_logo.png"
+                  alt="LyricSlide Logo"
+                  referrerPolicy="no-referrer"
+                  onError={() => setLogoError(true)}
+                />
+              ) : (
+                <Music size={30} color="#4f46e5" style={{ opacity: 0.5 }} />
+              )}
+            </LogoWrap>
+            <BrandText>
+              <BrandTitle>LyricSlide</BrandTitle>
+              <BrandSubtitle>가사를 PPT 슬라이드로</BrandSubtitle>
+            </BrandText>
+          </BrandRow>
           {lyrics && (
-            <button
-              onClick={() => setShowClearConfirm(true)}
-              className="text-sm text-red-500 hover:text-red-600 flex items-center gap-1 transition-colors font-bold"
-            >
-              <Trash2 className="w-4 h-4" /> 비우기
-            </button>
+            <ClearButton onClick={() => setShowClearConfirm(true)}>
+              <Trash2 size={16} /> 비우기
+            </ClearButton>
           )}
-        </header>
+        </Header>
 
-        <div className="flex-1 p-6 flex flex-col min-h-0">
-          <div className="mb-4 space-y-3">
-            <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">
-              가사 입력
-            </label>
-            <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl shadow-sm">
-              <p className="text-base text-indigo-700 font-bold flex items-start gap-2">
-                <span className="text-xl leading-none">💡</span>
-                <span>
-                  팁: 빈 줄(엔터 두 번)을 입력하면 슬라이드가 구분됩니다.
-                </span>
-              </p>
-            </div>
-          </div>
-          <textarea
+        <InputSection>
+          <InputHeader>
+            <InputLabel>가사 입력</InputLabel>
+            <TipBox>
+              <TipText>
+                <span style={{ fontSize: "20px", lineHeight: 1 }}>💡</span>
+                <span>팁: 빈 줄(엔터 두 번)을 입력하면 슬라이드가 구분됩니다.</span>
+              </TipText>
+            </TipBox>
+          </InputHeader>
+          <LyricsTextarea
             value={lyrics}
             onChange={(e) => setLyrics(e.target.value)}
             placeholder="여기에 가사를 입력하세요.&#10;&#10;[예시]&#10;학교 종이 땡땡땡&#10;어서 모이자&#10;&#10;선생님이 우리를&#10;기다리신다&#10;&#10;(빈 줄을 두 번 입력하면 다음 슬라이드로 넘어갑니다)"
-            className="flex-1 w-full p-6 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all resize-none font-medium text-slate-700 text-lg placeholder:text-sm placeholder:font-normal leading-relaxed shadow-inner"
           />
-        </div>
-      </div>
+        </InputSection>
+      </Sidebar>
 
-      <div className="flex-1 flex flex-col min-h-0 bg-slate-100">
-        <div className="flex-[2] flex flex-col p-4 md:p-6 border-b border-slate-200 min-h-0 overflow-hidden">
-          <div className="max-w-4xl mx-auto w-full flex flex-col h-full overflow-hidden">
-            <div className="flex items-center justify-between mb-4 shrink-0">
-              <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                <Monitor className="w-4 h-4" /> 슬라이드 미리보기 (
-                {slides.length})
-              </h2>
+      <MainArea>
+        <PreviewSection>
+          <PreviewInner>
+            <PreviewHeader>
+              <PreviewTitle>
+                <Monitor size={16} /> 슬라이드 미리보기 ({slides.length})
+              </PreviewTitle>
               {slides.length > 0 && (
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-bold text-slate-500">
+                <PreviewControls>
+                  <SlideCounter>
                     {currentSlideIndex + 1} / {slides.length}
-                  </span>
-                  <div className="flex gap-2">
-                    <button
+                  </SlideCounter>
+                  <ArrowGroup>
+                    <IconButton
                       onClick={() =>
                         setCurrentSlideIndex((prev) => Math.max(0, prev - 1))
                       }
                       disabled={currentSlideIndex === 0}
-                      className="p-2 bg-white rounded-lg shadow-sm border border-slate-200 disabled:opacity-30 hover:bg-slate-50 transition-colors"
                     >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <button
+                      <ChevronLeft size={20} />
+                    </IconButton>
+                    <IconButton
                       onClick={() =>
                         setCurrentSlideIndex((prev) =>
                           Math.min(slides.length - 1, prev + 1),
                         )
                       }
                       disabled={currentSlideIndex >= slides.length - 1}
-                      className="p-2 bg-white rounded-lg shadow-sm border border-slate-200 disabled:opacity-30 hover:bg-slate-50 transition-colors"
                     >
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
+                      <ChevronRight size={20} />
+                    </IconButton>
+                  </ArrowGroup>
+                </PreviewControls>
               )}
-            </div>
+            </PreviewHeader>
 
-            <div className="flex-1 relative min-h-0 w-full flex items-center justify-center bg-slate-200/30 rounded-3xl overflow-hidden p-4 md:p-8">
+            <PreviewViewport>
               {slides.length === 0 ? (
-                <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
-                  <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mb-4">
-                    <Plus className="w-8 h-8" />
-                  </div>
-                  <p className="font-bold text-lg text-center">
+                <EmptyPreview>
+                  <EmptyIconWrap>
+                    <Plus size={32} />
+                  </EmptyIconWrap>
+                  <EmptyText>
                     가사를 입력하면
                     <br />
                     미리보기가 표시됩니다.
-                  </p>
-                </div>
+                  </EmptyText>
+                </EmptyPreview>
               ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <div className="relative w-full h-full flex items-center justify-center">
-                    <div
-                      className="relative w-full max-w-full max-h-full shadow-2xl overflow-hidden rounded-xl border border-slate-300"
-                      style={{
-                        aspectRatio: "16/9",
-                        maxHeight: "100%",
-                        maxWidth: "100%",
-                      }}
-                    >
+                <SlideOuter>
+                  <SlideFrame style={{ backgroundColor: bgColor }}>
+                    <SlideBadge>Slide {currentSlideIndex + 1}</SlideBadge>
+
+                    {showTitle && titleText && (
                       <div
-                        key={currentSlideIndex}
-                        className="absolute inset-0"
-                        style={{ backgroundColor: bgColor }}
-                      >
-                        <div className="absolute top-4 right-4 bg-white/10 backdrop-blur-md text-white/70 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-widest font-bold z-10 border border-white/10">
-                          Slide {currentSlideIndex + 1}
-                        </div>
-
-                        {showTitle && titleText && (
-                          <div
-                            className={`absolute p-6 w-1/3 z-10 ${
-                              titlePosition.includes("T") ? "top-0" : "bottom-0"
-                            } ${
-                              titlePosition.includes("L")
-                                ? "left-0 text-left"
-                                : titlePosition.includes("R")
-                                  ? "right-0 text-right"
-                                  : "left-1/2 -translate-x-1/2 text-center"
-                            }`}
-                            style={{
-                              color: textColor,
-                              fontSize: `${titleFontSize * 0.8}px`,
-                              fontWeight: "bold",
-                              fontFamily:
-                                FONTS.find((f) => f.name === fontFamily)
-                                  ?.value || fontFamily,
-                            }}
-                          >
-                            {titleText}
-                          </div>
+                        style={getTitleOverlayStyle(
+                          titlePosition,
+                          textColor,
+                          titleFontSize,
+                          selectedFont,
                         )}
-
-                        <div className="absolute inset-0 flex items-center justify-center p-10 text-center">
-                          <div
-                            style={{
-                              color: textColor,
-                              fontSize: `${fontSize * 0.8}px`,
-                              whiteSpace: "pre-line",
-                              lineHeight: "1.5",
-                              fontFamily:
-                                FONTS.find((f) => f.name === fontFamily)
-                                  ?.value || fontFamily,
-                            }}
-                          >
-                            {slides[currentSlideIndex]?.join("\n")}
-                          </div>
-                        </div>
+                      >
+                        {titleText}
                       </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+                    )}
 
-        <div
-          className={`bg-white transition-all duration-300 ease-in-out shadow-[0_-4px_30px_rgba(0,0,0,0.05)] flex flex-col ${isSettingsOpen ? "flex-[2] min-h-[300px]" : "h-14"}`}
-        >
-          <div
-            className="flex items-center justify-between px-8 py-4 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors shrink-0"
-            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-          >
-            <div className="flex items-center gap-2">
+                    <SlideContent>
+                      <SlideLyrics
+                        style={{
+                          color: textColor,
+                          fontSize: `${fontSize * 0.8}px`,
+                          fontFamily: selectedFont,
+                        }}
+                      >
+                        {slides[currentSlideIndex]?.join("\n")}
+                      </SlideLyrics>
+                    </SlideContent>
+                  </SlideFrame>
+                </SlideOuter>
+              )}
+            </PreviewViewport>
+          </PreviewInner>
+        </PreviewSection>
+
+        <SettingsSection $open={isSettingsOpen}>
+          <SettingsHeader onClick={() => setIsSettingsOpen(!isSettingsOpen)}>
+            <SettingsHeading>
               <Settings
-                className={`w-4 h-4 text-slate-400 transition-transform duration-500 ${isSettingsOpen ? "rotate-90" : "rotate-0"}`}
+                size={16}
+                style={{
+                  color: "#94a3b8",
+                  transform: isSettingsOpen ? "rotate(90deg)" : "rotate(0deg)",
+                  transition: "transform 0.5s ease",
+                }}
               />
-              <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">
-                상세 설정
-              </span>
-            </div>
-            <div className="flex items-center gap-4">
+              <span>상세 설정</span>
+            </SettingsHeading>
+            <SettingsRight>
               {!isSettingsOpen && (
-                <div className="hidden md:flex items-center gap-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                  <span className="flex items-center gap-1">
-                    <Palette className="w-3 h-3" /> 디자인
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Type className="w-3 h-3" /> 제목
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Layout className="w-3 h-3" /> 레이아웃
-                  </span>
-                </div>
+                <CompactHint>
+                  <CompactHintItem>
+                    <Palette size={12} /> 디자인
+                  </CompactHintItem>
+                  <CompactHintItem>
+                    <Type size={12} /> 제목
+                  </CompactHintItem>
+                  <CompactHintItem>
+                    <Layout size={12} /> 레이아웃
+                  </CompactHintItem>
+                </CompactHint>
               )}
               {isSettingsOpen ? (
-                <ChevronDown className="w-5 h-5 text-slate-400" />
+                <ChevronDown size={20} color="#94a3b8" />
               ) : (
-                <ChevronUp className="w-5 h-5 text-slate-400" />
+                <ChevronUp size={20} color="#94a3b8" />
               )}
-            </div>
-          </div>
+            </SettingsRight>
+          </SettingsHeader>
 
-          <div
-            className={`p-8 overflow-y-auto transition-opacity duration-300 ${isSettingsOpen ? "opacity-100" : "opacity-0 pointer-events-none h-0 p-0"}`}
-          >
-            <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12">
-              {/* Left Settings Column */}
-              <div className="space-y-8">
+          <SettingsBody $open={isSettingsOpen}>
+            <SettingsGrid>
+              <SettingsColumn>
                 <section>
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">
-                    <Palette className="w-4 h-4" /> 디자인 설정
-                  </label>
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <span className="text-sm text-slate-500 font-bold">
-                        배경색
-                      </span>
-                      <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-100">
-                        <input
+                  <SectionLabel>
+                    <Palette size={16} /> 디자인 설정
+                  </SectionLabel>
+
+                  <ColorGrid>
+                    <ColorField>
+                      <FieldTitle>배경색</FieldTitle>
+                      <ColorInputWrap>
+                        <ColorInput
                           type="color"
                           value={bgColor}
                           onChange={(e) => setBgColor(e.target.value)}
-                          className="w-8 h-8 rounded-lg cursor-pointer border-none p-0 bg-transparent"
                         />
-                        <span className="text-sm font-mono font-bold uppercase text-slate-600">
-                          {bgColor}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <span className="text-sm text-slate-500 font-bold">
-                        글자색
-                      </span>
-                      <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-100">
-                        <input
+                        <ColorCode>{bgColor}</ColorCode>
+                      </ColorInputWrap>
+                    </ColorField>
+                    <ColorField>
+                      <FieldTitle>글자색</FieldTitle>
+                      <ColorInputWrap>
+                        <ColorInput
                           type="color"
                           value={textColor}
                           onChange={(e) => setTextColor(e.target.value)}
-                          className="w-8 h-8 rounded-lg cursor-pointer border-none p-0 bg-transparent"
                         />
-                        <span className="text-sm font-mono font-bold uppercase text-slate-600">
-                          {textColor}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                        <ColorCode>{textColor}</ColorCode>
+                      </ColorInputWrap>
+                    </ColorField>
+                  </ColorGrid>
 
-                  <div className="space-y-2">
-                    <span className="text-sm text-slate-500 font-bold">
-                      폰트 설정
-                    </span>
-                    <div className="grid grid-cols-2 gap-2">
+                  <FieldGroup>
+                    <FieldTitle>폰트 설정</FieldTitle>
+                    <FontGrid>
                       {FONTS.map((font) => (
-                        <button
+                        <FontButton
                           key={font.name}
                           onClick={() => setFontFamily(font.name)}
-                          className={`px-3 py-2 text-xs rounded-xl border transition-all text-left ${
-                            fontFamily === font.name
-                              ? "bg-indigo-50 border-indigo-200 text-indigo-600 font-bold"
-                              : "bg-white border-slate-100 text-slate-500 hover:border-slate-300"
-                          }`}
+                          $active={fontFamily === font.name}
                           style={{ fontFamily: font.value }}
                         >
                           {font.name}
-                        </button>
+                        </FontButton>
                       ))}
-                    </div>
-                  </div>
+                    </FontGrid>
+                  </FieldGroup>
                 </section>
 
-                <section className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-2 text-sm font-bold text-slate-500 uppercase tracking-widest">
-                      <Type className="w-4 h-4" /> 제목 설정
-                    </label>
-                    <button
+                <section>
+                  <SectionTop>
+                    <SectionLabel>
+                      <Type size={16} /> 제목 설정
+                    </SectionLabel>
+                    <Switch
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowTitle(!showTitle);
                       }}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${showTitle ? "bg-indigo-600" : "bg-slate-200"}`}
+                      $active={showTitle}
                     >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showTitle ? "translate-x-6" : "translate-x-1"}`}
-                      />
-                    </button>
-                  </div>
+                      <SwitchThumb $active={showTitle} />
+                    </Switch>
+                  </SectionTop>
 
                   {showTitle && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="space-y-4"
-                    >
-                      <input
-                        type="text"
-                        placeholder="슬라이드 제목 입력..."
-                        value={titleText}
-                        onChange={(e) => setTitleText(e.target.value)}
-                        className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
-                      />
-                      <div className="grid grid-cols-3 gap-2">
-                        <PositionButton
-                          pos="TL"
-                          label="왼쪽 위"
-                          titlePosition={titlePosition}
-                          onClick={() => setTitlePosition("TL")}
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                      <Stack gap={16}>
+                        <TextInput
+                          type="text"
+                          placeholder="슬라이드 제목 입력..."
+                          value={titleText}
+                          onChange={(e) => setTitleText(e.target.value)}
                         />
-                        <PositionButton
-                          pos="TC"
-                          label="가운데 위"
-                          titlePosition={titlePosition}
-                          onClick={() => setTitlePosition("TC")}
-                        />
-                        <PositionButton
-                          pos="TR"
-                          label="오른쪽 위"
-                          titlePosition={titlePosition}
-                          onClick={() => setTitlePosition("TR")}
-                        />
-                        <PositionButton
-                          pos="BL"
-                          label="왼쪽 아래"
-                          titlePosition={titlePosition}
-                          onClick={() => setTitlePosition("BL")}
-                        />
-                        <PositionButton
-                          pos="BC"
-                          label="가운데 아래"
-                          titlePosition={titlePosition}
-                          onClick={() => setTitlePosition("BC")}
-                        />
-                        <PositionButton
-                          pos="BR"
-                          label="오른쪽 아래"
-                          titlePosition={titlePosition}
-                          onClick={() => setTitlePosition("BR")}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm font-bold text-slate-500">
-                          <div className="flex items-center gap-2">
-                            <span>제목 크기</span>
-                            <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md font-bold">
-                              추천: 18px
-                            </span>
-                          </div>
-                          <span className="text-indigo-600">
-                            {titleFontSize}px
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min="8"
-                          max="100"
-                          step="1"
-                          value={titleFontSize}
-                          onChange={(e) =>
-                            setTitleFontSize(parseInt(e.target.value))
-                          }
-                          className="w-full h-2 accent-indigo-600 bg-slate-100 rounded-lg appearance-none cursor-pointer"
-                        />
-                      </div>
+                        <PositionGrid>
+                          <PositionButton
+                            pos="TL"
+                            label="왼쪽 위"
+                            titlePosition={titlePosition}
+                            onClick={() => setTitlePosition("TL")}
+                          />
+                          <PositionButton
+                            pos="TC"
+                            label="가운데 위"
+                            titlePosition={titlePosition}
+                            onClick={() => setTitlePosition("TC")}
+                          />
+                          <PositionButton
+                            pos="TR"
+                            label="오른쪽 위"
+                            titlePosition={titlePosition}
+                            onClick={() => setTitlePosition("TR")}
+                          />
+                          <PositionButton
+                            pos="BL"
+                            label="왼쪽 아래"
+                            titlePosition={titlePosition}
+                            onClick={() => setTitlePosition("BL")}
+                          />
+                          <PositionButton
+                            pos="BC"
+                            label="가운데 아래"
+                            titlePosition={titlePosition}
+                            onClick={() => setTitlePosition("BC")}
+                          />
+                          <PositionButton
+                            pos="BR"
+                            label="오른쪽 아래"
+                            titlePosition={titlePosition}
+                            onClick={() => setTitlePosition("BR")}
+                          />
+                        </PositionGrid>
+
+                        <RangeBlock>
+                          <RangeLabelRow>
+                            <RowWithBadge>
+                              <span>제목 크기</span>
+                              <Badge>추천: 18px</Badge>
+                            </RowWithBadge>
+                            <Value>{titleFontSize}px</Value>
+                          </RangeLabelRow>
+                          <RangeInput
+                            type="range"
+                            min="8"
+                            max="100"
+                            step="1"
+                            value={titleFontSize}
+                            onChange={(e) =>
+                              setTitleFontSize(parseInt(e.target.value, 10))
+                            }
+                          />
+                        </RangeBlock>
+                      </Stack>
                     </motion.div>
                   )}
                 </section>
-              </div>
+              </SettingsColumn>
 
-              <div className="space-y-8">
-                <section className="space-y-6">
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-500 uppercase tracking-widest">
-                    <Settings className="w-4 h-4" /> 레이아웃 및 내보내기
-                  </label>
+              <SettingsColumn>
+                <section>
+                  <SectionLabel>
+                    <Settings size={16} /> 레이아웃 및 내보내기
+                  </SectionLabel>
 
-                  <div className="space-y-5">
-                    <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-xl">
-                      <button
+                  <Stack gap={20}>
+                    <SegmentWrap>
+                      <SegmentButton
                         onClick={(e) => {
                           e.stopPropagation();
                           setSplitMode("block");
                         }}
-                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${splitMode === "block" ? "bg-white shadow-md text-indigo-600" : "text-slate-500 hover:text-slate-700"}`}
+                        $active={splitMode === "block"}
                       >
                         빈 줄 기준 분할
-                      </button>
-                      <button
+                      </SegmentButton>
+                      <SegmentButton
                         onClick={(e) => {
                           e.stopPropagation();
                           setSplitMode("fixed");
                         }}
-                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${splitMode === "fixed" ? "bg-white shadow-md text-indigo-600" : "text-slate-500 hover:text-slate-700"}`}
+                        $active={splitMode === "fixed"}
                       >
                         고정 줄 수 분할
-                      </button>
-                    </div>
+                      </SegmentButton>
+                    </SegmentWrap>
 
                     {splitMode === "fixed" && (
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm font-bold text-slate-500">
+                      <RangeBlock>
+                        <RangeLabelRow>
                           <span>슬라이드 당 줄 수</span>
-                          <span className="text-indigo-600">
-                            {linesPerSlide}
-                          </span>
-                        </div>
-                        <input
+                          <Value>{linesPerSlide}</Value>
+                        </RangeLabelRow>
+                        <RangeInput
                           type="range"
                           min="1"
                           max="8"
                           step="1"
                           value={linesPerSlide}
                           onChange={(e) =>
-                            setLinesPerSlide(parseInt(e.target.value))
+                            setLinesPerSlide(parseInt(e.target.value, 10))
                           }
-                          className="w-full h-2 accent-indigo-600 bg-slate-100 rounded-lg appearance-none cursor-pointer"
                         />
-                      </div>
+                      </RangeBlock>
                     )}
 
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm font-bold text-slate-500">
-                        <div className="flex items-center gap-2">
+                    <RangeBlock>
+                      <RangeLabelRow>
+                        <RowWithBadge>
                           <span>가사 글자 크기</span>
-                          <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md font-bold">
-                            추천: 34~36px
-                          </span>
-                        </div>
-                        <span className="text-indigo-600">{fontSize}px</span>
-                      </div>
-                      <input
+                          <Badge>추천: 34~36px</Badge>
+                        </RowWithBadge>
+                        <Value>{fontSize}px</Value>
+                      </RangeLabelRow>
+                      <RangeInput
                         type="range"
                         min="20"
                         max="120"
                         step="1"
                         value={fontSize}
-                        onChange={(e) => setFontSize(parseInt(e.target.value))}
-                        className="w-full h-2 accent-indigo-600 bg-slate-100 rounded-lg appearance-none cursor-pointer"
+                        onChange={(e) => setFontSize(parseInt(e.target.value, 10))}
                       />
-                    </div>
-                  </div>
+                    </RangeBlock>
+                  </Stack>
                 </section>
 
-                <button
+                <DownloadButton
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDownload();
+                    void handleDownload();
                   }}
                   disabled={!lyrics.trim()}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 text-white font-bold py-4 rounded-2xl shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-3 active:scale-95 text-base"
                 >
-                  <Download className="w-5 h-5" />
-                  PPT 다운로드
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+                  <Download size={20} /> PPT 다운로드
+                </DownloadButton>
+              </SettingsColumn>
+            </SettingsGrid>
+          </SettingsBody>
+        </SettingsSection>
+      </MainArea>
 
       <AnimatePresence>
         {showClearConfirm && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <ModalWrap>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowClearConfirm(false)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "rgba(15, 23, 42, 0.6)",
+                backdropFilter: "blur(4px)",
+              }}
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl p-8 overflow-hidden"
+              style={{
+                position: "relative",
+                width: "100%",
+                maxWidth: "384px",
+                background: "#ffffff",
+                borderRadius: "24px",
+                boxShadow: "0 25px 50px rgba(15, 23, 42, 0.3)",
+                overflow: "hidden",
+              }}
             >
-              <div className="absolute top-0 left-0 w-full h-2 bg-red-500" />
-              <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-6">
-                  <Trash2 className="w-8 h-8 text-red-500" />
-                </div>
-                <h3 className="text-xl font-black text-slate-900 mb-2">
-                  가사를 비우시겠습니까?
-                </h3>
-                <p className="text-slate-500 font-medium mb-8">
+              <ModalTopLine />
+              <ModalContent>
+                <ModalIconWrap>
+                  <Trash2 size={32} color="#ef4444" />
+                </ModalIconWrap>
+                <ModalTitle>가사를 비우시겠습니까?</ModalTitle>
+                <ModalDescription>
                   입력하신 모든 가사가 삭제됩니다.
                   <br />이 작업은 되돌릴 수 없습니다.
-                </p>
-                <div className="flex w-full gap-3">
-                  <button
-                    onClick={() => setShowClearConfirm(false)}
-                    className="flex-1 px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition-all active:scale-95"
-                  >
+                </ModalDescription>
+                <ModalButtons>
+                  <CancelButton onClick={() => setShowClearConfirm(false)}>
                     취소
-                  </button>
-                  <button
+                  </CancelButton>
+                  <DeleteButton
                     onClick={() => {
                       setLyrics("");
                       setShowClearConfirm(false);
                     }}
-                    className="flex-1 px-6 py-3.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-2xl shadow-lg shadow-red-100 transition-all active:scale-95"
                   >
                     삭제하기
-                  </button>
-                </div>
-              </div>
+                  </DeleteButton>
+                </ModalButtons>
+              </ModalContent>
             </motion.div>
-          </div>
+          </ModalWrap>
         )}
       </AnimatePresence>
-    </div>
+    </AppShell>
   );
 }
+
+const AppShell = styled.div`
+  height: 100vh;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  color: #0f172a;
+  overflow: hidden;
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+  }
+`;
+
+const Sidebar = styled.div`
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+  z-index: 20;
+
+  @media (min-width: 768px) {
+    width: 485px;
+  }
+`;
+
+const Header = styled.header`
+  padding: 16px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(248, 250, 252, 0.5);
+`;
+
+const BrandRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 16px;
+`;
+
+const LogoWrap = styled.div`
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 12px;
+`;
+
+const LogoImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: scale(1.25);
+`;
+
+const BrandText = styled.div`
+  display: flex;
+  flex-direction: column;
+`;
+
+const BrandTitle = styled.h1`
+  margin: 0;
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: #1e293b;
+`;
+
+const BrandSubtitle = styled.span`
+  margin-top: 4px;
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+`;
+
+const ClearButton = styled.button`
+  border: 0;
+  background: transparent;
+  color: #ef4444;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+
+  &:hover {
+    color: #dc2626;
+  }
+`;
+
+const InputSection = styled.div`
+  flex: 1;
+  min-height: 0;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+`;
+
+const InputHeader = styled.div`
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const InputLabel = styled.label`
+  font-size: 14px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+`;
+
+const TipBox = styled.div`
+  background: #eef2ff;
+  border: 1px solid #e0e7ff;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+`;
+
+const TipText = styled.p`
+  margin: 0;
+  color: #4338ca;
+  font-weight: 700;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+`;
+
+const LyricsTextarea = styled.textarea`
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  resize: none;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #f8fafc;
+  color: #334155;
+  padding: 24px;
+  font-size: 18px;
+  line-height: 1.6;
+  font-weight: 500;
+  outline: none;
+  box-shadow: inset 0 2px 6px rgba(15, 23, 42, 0.06);
+  transition: all 0.2s ease;
+
+  &::placeholder {
+    font-size: 14px;
+    font-weight: 400;
+    color: #94a3b8;
+  }
+
+  &:focus {
+    background: #ffffff;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px #818cf8;
+  }
+`;
+
+const MainArea = styled.div`
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #f1f5f9;
+`;
+
+const PreviewSection = styled.div`
+  flex: 2;
+  min-height: 0;
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  overflow: hidden;
+
+  @media (min-width: 768px) {
+    padding: 24px;
+  }
+`;
+
+const PreviewInner = styled.div`
+  width: 100%;
+  max-width: 896px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+`;
+
+const PreviewHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+`;
+
+const PreviewTitle = styled.h2`
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const PreviewControls = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 16px;
+`;
+
+const SlideCounter = styled.span`
+  font-size: 14px;
+  font-weight: 700;
+  color: #64748b;
+`;
+
+const ArrowGroup = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const IconButton = styled.button`
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  padding: 8px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  &:not(:disabled):hover {
+    background: #f8fafc;
+  }
+`;
+
+const PreviewViewport = styled.div`
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border-radius: 24px;
+  background: rgba(148, 163, 184, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 16px;
+
+  @media (min-width: 768px) {
+    padding: 32px;
+  }
+`;
+
+const EmptyPreview = styled.div`
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+`;
+
+const EmptyIconWrap = styled.div`
+  width: 64px;
+  height: 64px;
+  border-radius: 9999px;
+  background: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+`;
+
+const EmptyText = styled.p`
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+`;
+
+const SlideOuter = styled.div`
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const SlideFrame = styled.div`
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px rgba(15, 23, 42, 0.25);
+`;
+
+const SlideBadge = styled.div`
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+`;
+
+const SlideContent = styled.div`
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+`;
+
+const SlideLyrics = styled.div`
+  white-space: pre-line;
+  line-height: 1.5;
+`;
+
+const SettingsSection = styled.div<{ $open: boolean }>`
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 -4px 30px rgba(15, 23, 42, 0.05);
+  transition: all 0.3s ease;
+  flex: ${({ $open }) => ($open ? "2" : "none")};
+  min-height: ${({ $open }) => ($open ? "300px" : "56px")};
+  height: ${({ $open }) => ($open ? "auto" : "56px")};
+`;
+
+const SettingsHeader = styled.div`
+  padding: 16px 32px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: #f8fafc;
+  }
+`;
+
+const SettingsHeading = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  span {
+    font-size: 14px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+  }
+`;
+
+const SettingsRight = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 16px;
+`;
+
+const CompactHint = styled.div`
+  display: none;
+  align-items: center;
+  gap: 24px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+
+  @media (min-width: 768px) {
+    display: flex;
+  }
+`;
+
+const CompactHintItem = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+`;
+
+const SettingsBody = styled.div<{ $open: boolean }>`
+  overflow-y: auto;
+  transition: opacity 0.3s ease;
+  opacity: ${({ $open }) => ($open ? 1 : 0)};
+  pointer-events: ${({ $open }) => ($open ? "auto" : "none")};
+  padding: ${({ $open }) => ($open ? "32px" : "0")};
+  height: ${({ $open }) => ($open ? "auto" : "0")};
+`;
+
+const SettingsGrid = styled.div`
+  max-width: 896px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 48px;
+
+  @media (min-width: 768px) {
+    grid-template-columns: 1fr 1fr;
+  }
+`;
+
+const SettingsColumn = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+`;
+
+const SectionLabel = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+`;
+
+const ColorGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 16px;
+`;
+
+const ColorField = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const FieldTitle = styled.span`
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 700;
+`;
+
+const ColorInputWrap = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  padding: 8px;
+`;
+
+const ColorInput = styled.input`
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+`;
+
+const ColorCode = styled.span`
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #475569;
+`;
+
+const FieldGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const FontGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+`;
+
+const FontButton = styled.button<{ $active: boolean }>`
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid;
+  border-color: ${({ $active }) => ($active ? "#c7d2fe" : "#f1f5f9")};
+  background: ${({ $active }) => ($active ? "#eef2ff" : "#ffffff")};
+  color: ${({ $active }) => ($active ? "#4f46e5" : "#64748b")};
+  font-size: 12px;
+  font-weight: ${({ $active }) => ($active ? 700 : 500)};
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: #cbd5e1;
+  }
+`;
+
+const SectionTop = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+`;
+
+const Switch = styled.button<{ $active: boolean }>`
+  width: 44px;
+  height: 24px;
+  border: 0;
+  border-radius: 9999px;
+  background: ${({ $active }) => ($active ? "#4f46e5" : "#cbd5e1")};
+  display: flex;
+  align-items: center;
+  padding: 0;
+  cursor: pointer;
+`;
+
+const SwitchThumb = styled.span<{ $active: boolean }>`
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: #ffffff;
+  transform: ${({ $active }) =>
+    $active ? "translateX(24px)" : "translateX(4px)"};
+  transition: transform 0.2s ease;
+`;
+
+const Stack = styled.div<{ gap?: number }>`
+  display: flex;
+  flex-direction: column;
+  gap: ${({ gap = 12 }) => `${gap}px`};
+`;
+
+const TextInput = styled.input`
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #334155;
+  outline: none;
+
+  &:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px #818cf8;
+  }
+`;
+
+const PositionGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+`;
+
+const RangeBlock = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const RangeLabelRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 700;
+  color: #64748b;
+`;
+
+const RowWithBadge = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const Badge = styled.span`
+  font-size: 10px;
+  font-weight: 700;
+  color: #047857;
+  background: #d1fae5;
+  border-radius: 6px;
+  padding: 2px 6px;
+`;
+
+const Value = styled.span`
+  color: #4f46e5;
+`;
+
+const RangeInput = styled.input`
+  width: 100%;
+  height: 8px;
+  cursor: pointer;
+  accent-color: #4f46e5;
+`;
+
+const SegmentWrap = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f1f5f9;
+  border-radius: 12px;
+  padding: 6px;
+`;
+
+const SegmentButton = styled.button<{ $active: boolean }>`
+  flex: 1;
+  border: 0;
+  border-radius: 10px;
+  padding: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: ${({ $active }) => ($active ? "#ffffff" : "transparent")};
+  color: ${({ $active }) => ($active ? "#4f46e5" : "#64748b")};
+  box-shadow: ${({ $active }) =>
+    $active ? "0 2px 10px rgba(15, 23, 42, 0.1)" : "none"};
+
+  &:hover {
+    color: ${({ $active }) => ($active ? "#4f46e5" : "#334155")};
+  }
+`;
+
+const DownloadButton = styled.button`
+  width: 100%;
+  border: 0;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: #4f46e5;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 14px 28px rgba(79, 70, 229, 0.22);
+
+  &:hover:not(:disabled) {
+    background: #4338ca;
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  &:disabled {
+    background: #e2e8f0;
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+`;
+
+const ModalWrap = styled.div`
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+`;
+
+const ModalTopLine = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 8px;
+  background: #ef4444;
+`;
+
+const ModalContent = styled.div`
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+`;
+
+const ModalIconWrap = styled.div`
+  width: 64px;
+  height: 64px;
+  border-radius: 9999px;
+  background: #fef2f2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+`;
+
+const ModalTitle = styled.h3`
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 900;
+  color: #0f172a;
+`;
+
+const ModalDescription = styled.p`
+  margin: 0 0 32px;
+  color: #64748b;
+  font-weight: 500;
+`;
+
+const ModalButtons = styled.div`
+  width: 100%;
+  display: flex;
+  gap: 12px;
+`;
+
+const CancelButton = styled.button`
+  flex: 1;
+  border: 0;
+  border-radius: 16px;
+  padding: 14px 24px;
+  background: #f1f5f9;
+  color: #475569;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #e2e8f0;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+`;
+
+const DeleteButton = styled.button`
+  flex: 1;
+  border: 0;
+  border-radius: 16px;
+  padding: 14px 24px;
+  background: #ef4444;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 10px 24px rgba(239, 68, 68, 0.25);
+
+  &:hover {
+    background: #dc2626;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+`;
