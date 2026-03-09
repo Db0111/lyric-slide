@@ -69,6 +69,7 @@ export default function App() {
   const [showTitle, setShowTitle] = useState(false);
   const [titleText, setTitleText] = useState("");
   const [titlePosition, setTitlePosition] = useState<TitlePosition>("TL");
+  const [pptTitle, setPptTitle] = useState("");
   const [fontSize, setFontSize] = useState(36);
   const [titleFontSize, setTitleFontSize] = useState(18);
   const [fontFamily, setFontFamily] = useState("Noto Sans KR");
@@ -120,6 +121,19 @@ export default function App() {
   }, [slides.length]);
 
   const handleDownload = async () => {
+    const today = new Date();
+    const yyyymmdd = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`;
+    const firstLyricLine =
+      lyrics
+        .split("\n")
+        .map((line) => line.trim())
+        .find((line) => line.length > 0) || "lyrics";
+    const baseName = pptTitle.trim() || `${firstLyricLine}_${yyyymmdd}`;
+    const safeBaseName = baseName
+      .replace(/[\\/:*?"<>|]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
     const pres = new pptxgen();
     pres.layout = "LAYOUT_16x9";
 
@@ -191,7 +205,7 @@ export default function App() {
       });
     });
 
-    pres.writeFile({ fileName: `${titleText || "lyrics"}.pptx` });
+    pres.writeFile({ fileName: `${safeBaseName || "lyrics"}.pptx` });
   };
 
   return (
@@ -244,6 +258,22 @@ export default function App() {
       <MainArea>
         <PreviewSection>
           <PreviewInner>
+            <PreviewTopBar>
+              <PptTitleInput
+                type="text"
+                value={pptTitle}
+                onChange={(e) => setPptTitle(e.target.value)}
+                placeholder="PPT 제목 입력 (비우면 첫 줄 + 날짜로 저장)"
+              />
+              <DownloadButton
+                onClick={() => {
+                  void handleDownload();
+                }}
+                disabled={!lyrics.trim()}
+              >
+                <Download size={20} /> PPT 다운로드
+              </DownloadButton>
+            </PreviewTopBar>
             <PreviewHeader>
               <PreviewTitle>
                 <Monitor size={16} /> 슬라이드 미리보기 ({slides.length})
@@ -580,16 +610,6 @@ export default function App() {
                     </RangeBlock>
                   </Stack>
                 </section>
-
-                <DownloadButton
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void handleDownload();
-                  }}
-                  disabled={!lyrics.trim()}
-                >
-                  <Download size={20} /> PPT 다운로드
-                </DownloadButton>
               </SettingsColumn>
             </SettingsGrid>
           </SettingsBody>
@@ -864,6 +884,40 @@ const PreviewHeader = styled.div`
   justify-content: space-between;
   margin-bottom: 16px;
   flex-shrink: 0;
+`;
+
+const PreviewTopBar = styled.div`
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+
+  @media (max-width: 767px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
+const PptTitleInput = styled.input`
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 11px 14px;
+  font-size: 14px;
+  color: #334155;
+  outline: none;
+  transition: all 0.2s ease;
+
+  &::placeholder {
+    color: #94a3b8;
+  }
+
+  &:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px #818cf8;
+  }
 `;
 
 const PreviewTitle = styled.h2`
@@ -1350,10 +1404,10 @@ const SegmentButton = styled.button<{ $active: boolean }>`
 `;
 
 const DownloadButton = styled.button`
-  width: 100%;
+  width: 220px;
   border: 0;
   border-radius: 16px;
-  padding: 16px;
+  padding: 12px 16px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1378,6 +1432,10 @@ const DownloadButton = styled.button`
     background: #e2e8f0;
     box-shadow: none;
     cursor: not-allowed;
+  }
+
+  @media (max-width: 767px) {
+    width: 100%;
   }
 `;
 
