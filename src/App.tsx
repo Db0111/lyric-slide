@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useMemo, useEffect } from "react";
+import { keyframes } from "@emotion/react";
 import styled from "@emotion/styled";
 import pptxgen from "pptxgenjs";
 import {
@@ -21,7 +22,6 @@ import {
   ChevronUp,
   Music,
 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
 import { FONTS } from "./constants/font";
 import { TitlePosition } from "./types/title";
 import PositionButton from "./components/PositionButton";
@@ -427,7 +427,7 @@ export default function App() {
                   </SectionTop>
 
                   {showTitle && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <FadeInBlock>
                       <Stack gap={16}>
                         <TextInput
                           type="text"
@@ -494,7 +494,7 @@ export default function App() {
                           />
                         </RangeBlock>
                       </Stack>
-                    </motion.div>
+                    </FadeInBlock>
                   )}
                 </section>
               </SettingsColumn>
@@ -581,35 +581,10 @@ export default function App() {
         </SettingsSection>
       </MainArea>
 
-      <AnimatePresence>
-        {showClearConfirm && (
-          <ModalWrap>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowClearConfirm(false)}
-              style={{
-                position: "absolute",
-                inset: 0,
-                background: "rgba(15, 23, 42, 0.6)",
-                backdropFilter: "blur(4px)",
-              }}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              style={{
-                position: "relative",
-                width: "100%",
-                maxWidth: "384px",
-                background: "#ffffff",
-                borderRadius: "24px",
-                boxShadow: "0 25px 50px rgba(15, 23, 42, 0.3)",
-                overflow: "hidden",
-              }}
-            >
+      {showClearConfirm && (
+        <ModalWrap>
+          <ModalBackdrop onClick={() => setShowClearConfirm(false)} />
+          <ModalCard>
               <ModalTopLine />
               <ModalContent>
                 <ModalIconWrap>
@@ -634,13 +609,41 @@ export default function App() {
                   </DeleteButton>
                 </ModalButtons>
               </ModalContent>
-            </motion.div>
-          </ModalWrap>
-        )}
-      </AnimatePresence>
+          </ModalCard>
+        </ModalWrap>
+      )}
     </AppShell>
   );
 }
+
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+`;
+
+const overlayIn = keyframes`
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+`;
+
+const modalIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+`;
 
 const AppShell = styled.div`
   height: 100vh;
@@ -1345,6 +1348,29 @@ const ModalWrap = styled.div`
   align-items: center;
   justify-content: center;
   padding: 16px;
+`;
+
+const FadeInBlock = styled.div`
+  animation: ${fadeIn} 0.2s ease;
+`;
+
+const ModalBackdrop = styled.div`
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  animation: ${overlayIn} 0.2s ease;
+`;
+
+const ModalCard = styled.div`
+  position: relative;
+  width: 100%;
+  max-width: 384px;
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow: 0 25px 50px rgba(15, 23, 42, 0.3);
+  overflow: hidden;
+  animation: ${modalIn} 0.24s ease;
 `;
 
 const ModalTopLine = styled.div`
