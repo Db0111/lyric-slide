@@ -21,6 +21,10 @@ import {
   ChevronDown,
   ChevronUp,
   Music,
+  MessageSquare,
+  AlertTriangle,
+  Mail,
+  X,
 } from "lucide-react";
 import { FONTS } from "./constants/font";
 import { TitlePosition } from "./types/title";
@@ -75,8 +79,14 @@ export default function App() {
   const [fontFamily, setFontFamily] = useState("Noto Sans KR");
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
   const [logoError, setLogoError] = useState(false);
+  const [hasRuntimeError, setHasRuntimeError] = useState(false);
+  const [contactType, setContactType] = useState<
+    "오류" | "피드백" | "기능요청"
+  >("오류");
+  const [contactMessage, setContactMessage] = useState("");
 
   const selectedFont =
     FONTS.find((font) => font.name === fontFamily)?.value || fontFamily;
@@ -119,6 +129,20 @@ export default function App() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [slides.length]);
+
+  useEffect(() => {
+    const handleRuntimeError = () => {
+      setHasRuntimeError(true);
+    };
+
+    window.addEventListener("error", handleRuntimeError);
+    window.addEventListener("unhandledrejection", handleRuntimeError);
+
+    return () => {
+      window.removeEventListener("error", handleRuntimeError);
+      window.removeEventListener("unhandledrejection", handleRuntimeError);
+    };
+  }, []);
 
   const handleDownload = async () => {
     const today = new Date();
@@ -208,6 +232,31 @@ export default function App() {
     pres.writeFile({ fileName: `${safeBaseName || "lyrics"}.pptx` });
   };
 
+  const handleOpenContactModal = () => {
+    setContactType(hasRuntimeError ? "오류" : "피드백");
+    setContactMessage("");
+    setShowContactModal(true);
+  };
+
+  const handleSendContactEmail = () => {
+    const trimmedMessage = contactMessage.trim();
+    if (!trimmedMessage) {
+      return;
+    }
+
+    const subject = `[LyricSlide] ${contactType} 문의`;
+    const body = `${trimmedMessage}
+
+---
+유형: ${contactType}
+페이지: ${window.location.href}
+시각: ${new Date().toLocaleString("ko-KR")}
+`;
+
+    window.location.href = `mailto:db200111@daum.net?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    setShowContactModal(false);
+  };
+
   return (
     <AppShell>
       <Sidebar>
@@ -243,7 +292,9 @@ export default function App() {
             <TipBox>
               <TipText>
                 <span style={{ fontSize: "20px", lineHeight: 1 }}>💡</span>
-                <span>팁: 빈 줄(엔터 두 번)을 입력하면 슬라이드가 구분됩니다.</span>
+                <span>
+                  팁: 빈 줄(엔터 두 번)을 입력하면 슬라이드가 구분됩니다.
+                </span>
               </TipText>
             </TipBox>
           </InputHeader>
@@ -273,6 +324,18 @@ export default function App() {
               >
                 <Download size={20} /> PPT 다운로드
               </DownloadButton>
+              <ContactButton
+                onClick={handleOpenContactModal}
+                type="button"
+                $warning={hasRuntimeError}
+              >
+                {hasRuntimeError ? (
+                  <AlertTriangle size={18} />
+                ) : (
+                  <MessageSquare size={18} />
+                )}
+                문의하기
+              </ContactButton>
             </PreviewTopBar>
             <PreviewHeader>
               <PreviewTitle>
@@ -605,7 +668,9 @@ export default function App() {
                         max="120"
                         step="1"
                         value={fontSize}
-                        onChange={(e) => setFontSize(parseInt(e.target.value, 10))}
+                        onChange={(e) =>
+                          setFontSize(parseInt(e.target.value, 10))
+                        }
                       />
                     </RangeBlock>
                   </Stack>
@@ -620,31 +685,90 @@ export default function App() {
         <ModalWrap>
           <ModalBackdrop onClick={() => setShowClearConfirm(false)} />
           <ModalCard>
-              <ModalTopLine />
-              <ModalContent>
-                <ModalIconWrap>
-                  <Trash2 size={32} color="#ef4444" />
-                </ModalIconWrap>
-                <ModalTitle>가사를 비우시겠습니까?</ModalTitle>
-                <ModalDescription>
-                  입력하신 모든 가사가 삭제됩니다.
-                  <br />이 작업은 되돌릴 수 없습니다.
-                </ModalDescription>
-                <ModalButtons>
-                  <CancelButton onClick={() => setShowClearConfirm(false)}>
-                    취소
-                  </CancelButton>
-                  <DeleteButton
-                    onClick={() => {
-                      setLyrics("");
-                      setShowClearConfirm(false);
-                    }}
-                  >
-                    삭제하기
-                  </DeleteButton>
-                </ModalButtons>
-              </ModalContent>
+            <ModalTopLine />
+            <ModalContent>
+              <ModalIconWrap>
+                <Trash2 size={32} color="#ef4444" />
+              </ModalIconWrap>
+              <ModalTitle>가사를 비우시겠습니까?</ModalTitle>
+              <ModalDescription>
+                입력하신 모든 가사가 삭제됩니다.
+                <br />이 작업은 되돌릴 수 없습니다.
+              </ModalDescription>
+              <ModalButtons>
+                <CancelButton onClick={() => setShowClearConfirm(false)}>
+                  취소
+                </CancelButton>
+                <DeleteButton
+                  onClick={() => {
+                    setLyrics("");
+                    setShowClearConfirm(false);
+                  }}
+                >
+                  삭제하기
+                </DeleteButton>
+              </ModalButtons>
+            </ModalContent>
           </ModalCard>
+        </ModalWrap>
+      )}
+
+      {showContactModal && (
+        <ModalWrap>
+          <ModalBackdrop onClick={() => setShowContactModal(false)} />
+          <ContactModalCard>
+            <ContactModalHeader>
+              <ContactModalTitleRow>
+                <Mail size={18} />
+                <ContactModalTitle>문의 보내기</ContactModalTitle>
+              </ContactModalTitleRow>
+              <CloseButton
+                onClick={() => setShowContactModal(false)}
+                aria-label="문의 모달 닫기"
+              >
+                <X size={16} />
+              </CloseButton>
+            </ContactModalHeader>
+            <ContactModalBody>
+              <ContactField>
+                <ContactLabel>유형</ContactLabel>
+                <ContactSelect
+                  value={contactType}
+                  onChange={(e) =>
+                    setContactType(
+                      e.target.value as "오류" | "피드백" | "기능요청",
+                    )
+                  }
+                >
+                  <option value="오류">오류</option>
+                  <option value="피드백">피드백</option>
+                  <option value="기능요청">기능요청</option>
+                </ContactSelect>
+              </ContactField>
+              <ContactField>
+                <ContactLabel>내용</ContactLabel>
+                <ContactTextarea
+                  value={contactMessage}
+                  onChange={(e) => setContactMessage(e.target.value)}
+                  placeholder="오류의 경우, 어떤 상황에서 발생했는지 최대한 자세히 작성해주세요."
+                />
+              </ContactField>
+              <ContactGuide>
+                입력하신 내용은 개발자 이메일로 전송됩니다.
+              </ContactGuide>
+              <ContactActions>
+                <CancelButton onClick={() => setShowContactModal(false)}>
+                  취소
+                </CancelButton>
+                <SendButton
+                  onClick={handleSendContactEmail}
+                  disabled={!contactMessage.trim()}
+                >
+                  이메일 보내기
+                </SendButton>
+              </ContactActions>
+            </ContactModalBody>
+          </ContactModalCard>
         </ModalWrap>
       )}
     </AppShell>
@@ -1244,8 +1368,9 @@ const ColorInput = styled.input`
 `;
 
 const ColorCode = styled.span`
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
   font-size: 14px;
   font-weight: 700;
   text-transform: uppercase;
@@ -1439,6 +1564,30 @@ const DownloadButton = styled.button`
   }
 `;
 
+const ContactButton = styled.button<{ $warning: boolean }>`
+  border: 1px solid ${({ $warning }) => ($warning ? "#fca5a5" : "#cbd5e1")};
+  border-radius: 12px;
+  padding: 11px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: ${({ $warning }) => ($warning ? "#fff1f2" : "#ffffff")};
+  color: ${({ $warning }) => ($warning ? "#dc2626" : "#334155")};
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: ${({ $warning }) => ($warning ? "#ffe4e6" : "#f8fafc")};
+  }
+
+  @media (max-width: 767px) {
+    width: 100%;
+  }
+`;
+
 const ModalWrap = styled.div`
   position: fixed;
   inset: 0;
@@ -1557,5 +1706,145 @@ const DeleteButton = styled.button`
 
   &:active {
     transform: scale(0.98);
+  }
+`;
+
+const ContactModalCard = styled.div`
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 25px 50px rgba(15, 23, 42, 0.3);
+  animation: ${modalIn} 0.24s ease;
+`;
+
+const ContactModalHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid #e2e8f0;
+`;
+
+const ContactModalTitleRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+`;
+
+const ContactModalTitle = styled.h3`
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+`;
+
+const CloseButton = styled.button`
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: #64748b;
+
+  &:hover {
+    background: #f8fafc;
+  }
+`;
+
+const ContactModalBody = styled.div`
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+`;
+
+const ContactField = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const ContactLabel = styled.label`
+  font-size: 13px;
+  font-weight: 700;
+  color: #475569;
+`;
+
+const ContactSelect = styled.select`
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #334155;
+  background: #ffffff;
+  outline: none;
+
+  &:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px #c7d2fe;
+  }
+`;
+
+const ContactTextarea = styled.textarea`
+  min-height: 140px;
+  resize: vertical;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #334155;
+  outline: none;
+
+  &:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px #c7d2fe;
+  }
+`;
+
+const ContactGuide = styled.p`
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 13px;
+  line-height: 1.4;
+`;
+
+const ContactActions = styled.div`
+  display: flex;
+  gap: 10px;
+`;
+
+const SendButton = styled.button`
+  flex: 1;
+  border: 0;
+  border-radius: 16px;
+  padding: 14px 24px;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.2);
+
+  &:hover:not(:disabled) {
+    background: #1d4ed8;
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  &:disabled {
+    background: #bfdbfe;
+    box-shadow: none;
+    cursor: not-allowed;
   }
 `;
