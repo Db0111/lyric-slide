@@ -827,7 +827,7 @@ const Sidebar = styled.div`
   z-index: 20;
 
   @media (min-width: 768px) {
-    width: 485px;
+    width: 600px;
   }
 `;
 
