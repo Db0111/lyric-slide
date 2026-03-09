@@ -64,6 +64,83 @@ const getTitleOverlayStyle = (
   return style;
 };
 
+const SONG_SEPARATOR = "----";
+
+const isSongSeparatorLine = (line: string) =>
+  line.trim() === SONG_SEPARATOR;
+
+const splitLinesBySeparator = (lines: string[]) => {
+  const result: string[][] = [];
+  let currentSlide: string[] = [];
+
+  lines.forEach((line) => {
+    if (isSongSeparatorLine(line)) {
+      if (currentSlide.length > 0) {
+        result.push(currentSlide);
+        currentSlide = [];
+      }
+      result.push([]);
+      return;
+    }
+    currentSlide.push(line);
+  });
+
+  if (currentSlide.length > 0) {
+    result.push(currentSlide);
+  }
+
+  return result;
+};
+
+const createSlidesFromLyrics = (
+  sourceLyrics: string,
+  splitMode: "block" | "fixed",
+  linesPerSlide: number,
+) => {
+  const normalizedLyrics = sourceLyrics.replace(/\r\n?/g, "\n");
+  if (!normalizedLyrics.trim()) return [];
+
+  if (splitMode === "block") {
+    const blocks = normalizedLyrics.split(/\n\s*\n/);
+    const result: string[][] = [];
+
+    blocks.forEach((block) => {
+      const lines = block.split("\n").filter((line) => line.trim() !== "");
+      if (lines.length === 0) return;
+      result.push(...splitLinesBySeparator(lines));
+    });
+
+    return result;
+  }
+
+  const lines = normalizedLyrics.split("\n").filter((line) => line.trim() !== "");
+  const result: string[][] = [];
+  let currentSlide: string[] = [];
+
+  lines.forEach((line) => {
+    if (isSongSeparatorLine(line)) {
+      if (currentSlide.length > 0) {
+        result.push(currentSlide);
+        currentSlide = [];
+      }
+      result.push([]);
+      return;
+    }
+
+    currentSlide.push(line);
+    if (currentSlide.length === linesPerSlide) {
+      result.push(currentSlide);
+      currentSlide = [];
+    }
+  });
+
+  if (currentSlide.length > 0) {
+    result.push(currentSlide);
+  }
+
+  return result;
+};
+
 export default function App() {
   const [lyrics, setLyrics] = useState("");
   const [splitMode, setSplitMode] = useState<"block" | "fixed">("block");
@@ -92,21 +169,7 @@ export default function App() {
     FONTS.find((font) => font.name === fontFamily)?.value || fontFamily;
 
   const slides = useMemo(() => {
-    if (!lyrics.trim()) return [];
-
-    if (splitMode === "block") {
-      const blocks = lyrics.split(/\n\s*\n/);
-      return blocks
-        .map((block) => block.split("\n").filter((line) => line.trim() !== ""))
-        .filter((lines) => lines.length > 0);
-    }
-
-    const lines = lyrics.split("\n").filter((line) => line.trim() !== "");
-    const result = [];
-    for (let i = 0; i < lines.length; i += linesPerSlide) {
-      result.push(lines.slice(i, i + linesPerSlide));
-    }
-    return result;
+    return createSlidesFromLyrics(lyrics, splitMode, linesPerSlide);
   }, [lyrics, splitMode, linesPerSlide]);
 
   useEffect(() => {
@@ -151,7 +214,8 @@ export default function App() {
       lyrics
         .split("\n")
         .map((line) => line.trim())
-        .find((line) => line.length > 0) || "lyrics";
+        .find((line) => line.length > 0 && !isSongSeparatorLine(line)) ||
+      "lyrics";
     const baseName = pptTitle.trim() || `${firstLyricLine}_${yyyymmdd}`;
     const safeBaseName = baseName
       .replace(/[\\/:*?"<>|]/g, "")
@@ -288,20 +352,55 @@ export default function App() {
 
         <InputSection>
           <InputHeader>
-            <InputLabel>가사 입력</InputLabel>
-            <TipBox>
-              <TipText>
-                <span style={{ fontSize: "20px", lineHeight: 1 }}>💡</span>
-                <span>
-                  팁: 빈 줄(엔터 두 번)을 입력하면 슬라이드가 구분됩니다.
-                </span>
-              </TipText>
-            </TipBox>
+            <InputLabelRow>
+              <InputLabel>가사 입력</InputLabel>
+              <TipBox>
+                <TipTrigger type="button" aria-label="가사 입력 사용법">
+                  사용법
+                </TipTrigger>
+                <TipTooltip>
+                  <TipTitle>슬라이드 구분 방법</TipTitle>
+                  <TipLine>
+                    1) 빈 줄(엔터 두 번): 다음 가사 슬라이드로 넘어갑니다.
+                  </TipLine>
+                  <TipLine>
+                    2) `----` 한 줄: 곡 사이에 넣는 빈 슬라이드를 추가합니다.
+                  </TipLine>
+                  <TipExample>
+                    [예시 1: 엔터로 슬라이드 분리]
+                    <br />
+                    학교 종이 땡땡땡
+                    <br />
+                    어서 모이자
+                    <br />
+                    <br />
+                    선생님이 우리를
+                    <br />
+                    기다리신다
+                    <br />
+                    <br />
+                    [예시 2: ----로 빈 슬라이드 삽입]
+                    <br />
+                    학교 종이 땡땡땡
+                    <br />
+                    어서 모이자
+                    <br />
+                    <br />
+                    ----
+                    <br />
+                    <br />
+                    선생님이 우리를
+                    <br />
+                    기다리신다
+                  </TipExample>
+                </TipTooltip>
+              </TipBox>
+            </InputLabelRow>
           </InputHeader>
           <LyricsTextarea
             value={lyrics}
             onChange={(e) => setLyrics(e.target.value)}
-            placeholder="여기에 가사를 입력하세요.&#10;&#10;[예시]&#10;학교 종이 땡땡땡&#10;어서 모이자&#10;&#10;선생님이 우리를&#10;기다리신다&#10;&#10;(빈 줄을 두 번 입력하면 다음 슬라이드로 넘어갑니다)"
+            placeholder="여기에 가사를 입력하세요."
           />
         </InputSection>
       </Sidebar>
@@ -912,8 +1011,12 @@ const InputSection = styled.div`
 
 const InputHeader = styled.div`
   margin-bottom: 16px;
+`;
+
+const InputLabelRow = styled.div`
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
 `;
 
@@ -926,20 +1029,73 @@ const InputLabel = styled.label`
 `;
 
 const TipBox = styled.div`
-  background: #eef2ff;
-  border: 1px solid #e0e7ff;
-  padding: 16px;
-  border-radius: 12px;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+  position: relative;
+
+  &:hover > div,
+  &:focus-within > div {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
 `;
 
-const TipText = styled.p`
-  margin: 0;
+const TipTrigger = styled.button`
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
   color: #4338ca;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
   font-weight: 700;
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  cursor: pointer;
+
+  &:hover {
+    background: #e0e7ff;
+  }
+`;
+
+const TipTooltip = styled.div`
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(360px, calc(100vw - 72px));
+  background: #1e293b;
+  color: #e2e8f0;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    visibility 0.2s ease;
+  z-index: 30;
+`;
+
+const TipTitle = styled.p`
+  margin: 0 0 8px 0;
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 700;
+`;
+
+const TipLine = styled.p`
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #cbd5e1;
+`;
+
+const TipExample = styled.p`
+  margin: 10px 0 0 0;
+  padding-top: 10px;
+  border-top: 1px solid #334155;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #e2e8f0;
 `;
 
 const LyricsTextarea = styled.textarea`
