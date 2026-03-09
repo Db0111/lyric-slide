@@ -1,0 +1,5 @@
+{
+  "name": "LyricSlide",
+  "description": "가사를 입력하면 슬라이드로 나누어 PPT로 변환해주는 도구입니다.",
+  "requestFramePermissions": []
+}
