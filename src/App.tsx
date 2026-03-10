@@ -8,6 +8,7 @@ import { keyframes } from "@emotion/react";
 import styled from "@emotion/styled";
 import pptxgen from "pptxgenjs";
 import {
+  Bold,
   Download,
   Settings,
   Type,
@@ -147,6 +148,7 @@ export default function App() {
   const [linesPerSlide, setLinesPerSlide] = useState(2);
   const [bgColor, setBgColor] = useState("#000000");
   const [textColor, setTextColor] = useState("#FFFFFF");
+  const [isLyricsBold, setIsLyricsBold] = useState(true);
   const [showTitle, setShowTitle] = useState(false);
   const [titleText, setTitleText] = useState("");
   const [titlePosition, setTitlePosition] = useState<TitlePosition>("TL");
@@ -289,6 +291,7 @@ export default function App() {
         align: "center",
         valign: "middle",
         fontFace: fontFamily,
+        bold: isLyricsBold,
         lineSpacing: Math.round(fontSize * 1.25),
       });
     });
@@ -502,6 +505,7 @@ export default function App() {
                           color: textColor,
                           fontSize: `${fontSize * 0.8}px`,
                           fontFamily: selectedFont,
+                          fontWeight: isLyricsBold ? 700 : 400,
                         }}
                       >
                         {slides[currentSlideIndex]?.join("\n")}
@@ -600,20 +604,30 @@ export default function App() {
                     <FieldTitleWithIcon>
                       <Type size={14} /> 폰트 설정
                     </FieldTitleWithIcon>
-                    <FontSelect
-                      value={fontFamily}
-                      onChange={(e) => setFontFamily(e.target.value)}
-                    >
-                      {FONTS.map((font) => (
-                        <option
-                          key={font.name}
-                          value={font.name}
-                          style={{ fontFamily: font.value }}
-                        >
-                          {font.name}
-                        </option>
-                      ))}
-                    </FontSelect>
+                    <FontControls>
+                      <FontSelect
+                        value={fontFamily}
+                        onChange={(e) => setFontFamily(e.target.value)}
+                      >
+                        {FONTS.map((font) => (
+                          <option
+                            key={font.name}
+                            value={font.name}
+                            style={{ fontFamily: font.value }}
+                          >
+                            {font.name}
+                          </option>
+                        ))}
+                      </FontSelect>
+                      <ToggleButton
+                        type="button"
+                        onClick={() => setIsLyricsBold((prev) => !prev)}
+                        $active={isLyricsBold}
+                      >
+                        <Bold size={14} />
+                        굵게
+                      </ToggleButton>
+                    </FontControls>
                   </FieldGroup>
                 </section>
 
@@ -1539,8 +1553,15 @@ const FieldGroup = styled.div`
   gap: 8px;
 `;
 
+const FontControls = styled.div`
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+`;
+
 const FontSelect = styled.select`
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
@@ -1555,6 +1576,29 @@ const FontSelect = styled.select`
   &:focus {
     border-color: #6366f1;
     box-shadow: 0 0 0 2px #818cf8;
+  }
+`;
+
+const ToggleButton = styled.button<{ $active: boolean }>`
+  flex-shrink: 0;
+  border: 1px solid ${({ $active }) => ($active ? "#c7d2fe" : "#e2e8f0")};
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 92px;
+  background: ${({ $active }) => ($active ? "#eef2ff" : "#ffffff")};
+  color: ${({ $active }) => ($active ? "#4338ca" : "#475569")};
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: ${({ $active }) => ($active ? "#a5b4fc" : "#cbd5e1")};
+    background: ${({ $active }) => ($active ? "#e0e7ff" : "#f8fafc")};
   }
 `;
 
